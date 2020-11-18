@@ -80,7 +80,8 @@ const updatePost = async ( id, fields = {}) => {
 
     if (setString.length === 0) {
         return;
-
+    }
+    
     try {
         const { rows: [ posts ] } = await client.query(`
         UPDATE posts
