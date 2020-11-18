@@ -57,10 +57,100 @@ const updateUser = async (id, fields = {}) => {
     }
 }
 
+const createPost = async ({ authorId, title, content }) => {
+
+    try {
+        const { rows : [ posts ] } = await client.query(`
+        INSERT INTO posts("authorId", title, content)
+        VALUES ($1, $2, $3)
+        RETURNING *;
+        `, [ authorId, title, content ]);
+        return posts
+    } catch (error) {
+        throw error
+    }
+
+}
+
+const updatePost = async ( id, fields = {}) => {
+
+    const setString = Object.keys(fields).map(
+        (key, index) => `"${ key }"=$${ index + 1 }`
+      ).join(', ');
+
+    try {
+        const { rows: [ posts ] } = await client.query(`
+        UPDATE posts
+        SET ${ setString }
+        WHERE id=${ id }
+        RETURNING *;
+        `, Object.values(fields));
+        return posts;
+    } catch (error) {
+        throw error;
+    }
+
+}
+
+const getAllPosts = async () => {
+
+    try {
+        const { rows } = await client.query(`
+            SELECT "authorId", id, title, content, active
+            FROM posts
+        `)
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+
+}
+
+const getPostsByUser = async (userId) => {
+
+    try {
+        const { rows } = await client.query(`
+            SELECT * FROM posts
+            WHERE "authorId"=${ userId };
+        `);
+
+        return rows
+    } catch (error) {
+        throw error;
+    }
+
+}
+
+const getUserById = async ( userId ) => {
+
+    try {
+        const { rows } = await client.query(`
+            SELECT * FROM users
+            WHERE id=${userId};
+        `);
+
+        if ( rows.length ) {
+          let user = { ...rows};
+          delete user.password;
+          const posts = await getPostsByUser(userId);
+          user.posts = posts;
+          return user 
+        } else { return null }; 
+
+    } catch (error) {
+        throw error;
+    }
+
+}
+
 module.exports = {
     client,
     getAllUsers,
     createUser,
-    updateUser
+    updateUser,
+    createPost,
+    getAllPosts,
+    updatePost,
+    getUserById
 }
 
