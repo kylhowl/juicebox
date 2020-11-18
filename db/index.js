@@ -78,6 +78,9 @@ const updatePost = async ( id, fields = {}) => {
         (key, index) => `"${ key }"=$${ index + 1 }`
       ).join(', ');
 
+    if (setString.length === 0) {
+        return;
+
     try {
         const { rows: [ posts ] } = await client.query(`
         UPDATE posts
