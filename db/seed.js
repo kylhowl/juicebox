@@ -1,5 +1,16 @@
 
-const { client, getAllUsers, createUser, updateUser, createPost, getUserById, getAllPosts, updatePost } = require('./index');
+const { 
+    client,
+    getAllUsers,
+    createUser,
+    updateUser, 
+    createPost, 
+    getUserById, 
+    getAllPosts, 
+    updatePost,
+    getPostsByUser,
+    addTagsToPost
+    } = require('./index');
 
 const createInitialUsers = async () => {
 
@@ -28,11 +39,47 @@ const createInitialPosts = async () => {
             title: "First Post",
             content: "This is my first post. I hope I love writing blogs as much as I love writing them"
         });
+
+        await createPost({
+            authorId: sandra.id,
+            title: "How does this work?",
+            content: "Seriously, does this even do anything?"
+          });
+      
+          await createPost({
+            authorId: glamgal.id,
+            title: "Living the Glam Life",
+            content: "Do you even? I swear that half of you are posing."
+          });
+
     } catch (error) {
         throw error;
     }
-
 }
+
+ const createInitialTags = async () => {
+    try {
+      console.log("Starting to create tags...");
+  
+      const [happy, sad, inspo, catman] = await createTags([
+        '#happy', 
+        '#worst-day-ever', 
+        '#youcandoanything',
+        '#catmandoeverything'
+      ]);
+  
+      const [postOne, postTwo, postThree] = await getAllPosts();
+  
+      await addTagsToPost(postOne.id, [happy, inspo]);
+      await addTagsToPost(postTwo.id, [sad, inspo]);
+      await addTagsToPost(postThree.id, [happy, catman, inspo]);
+  
+      console.log("Finished creating tags!");
+    } catch (error) {
+      console.log("Error creating tags!");
+      throw error;
+    }
+  }
 
 const dropTables = async () => {
 
@@ -40,6 +87,8 @@ const dropTables = async () => {
         console.log("Starting to drop tables...")
 
         await client.query(`
+            DROP TABLE IF EXISTS post_tags;
+            DROP TABLE IF EXISTS tags;
             DROP TABLE IF EXISTS posts;
             DROP TABLE IF EXISTS users;
         `);
@@ -75,6 +124,21 @@ const createTables = async () => {
             content TEXT NOT NULL,
             active BOOLEAN DEFAULT true
         );
+        `);
+
+        await client.query(`
+            CREATE TABLE tags(
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL
+            )
+        `);
+
+        await client.query(`
+                CREATE TABLE post_tags(
+                    "postId" INTEGER REFERENCES posts(id),
+                    "tagId" INTEGER REFERENCES tags(id) ,
+                    UNIQUE ("postId", "tagId")
+                )
         `)
 
         console.log("Built tables like a master carpenter!")
@@ -84,6 +148,43 @@ const createTables = async () => {
     }
 
 }
+
+const createTags = async (tagList) => {
+
+    if (tagList.length === 0) {
+        return;
+    }
+
+    const insertValues = tagList.map((_, index)=> `$${index + 1}`).join('), (');
+    
+    const selectValues = tagList.map((_, index)=> `$${index + 1}`).join(', ');
+    // insert the tags, doing nothing on conflict
+    // returning nothing, we'll query after
+
+    // select all tags where the name is in our taglist
+    // return the rows from the query
+
+    try {
+        await client.query(`
+            INSERT INTO tags(name)
+            VALUES (${insertValues})
+            ON CONFLICT (name) DO NOTHING;
+        `, tagList);
+
+        const { rows } = await client.query(`
+            SELECT * FROM tags
+            WHERE name
+            IN (${selectValues});
+        `, tagList);
+        // console.log(rows);
+        return rows
+
+    } catch (error) {
+        throw error;
+    }
+
+}
+
 
 
 
@@ -96,9 +197,11 @@ const rebuildDB = async () => {
        await createTables();
        await createInitialUsers();
        await createInitialPosts();
+       await createInitialTags();
        
     } catch (error) {
-       throw error;
+        console.log("Error during rebuildDB")
+        throw error;
     } 
 
 }
