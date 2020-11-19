@@ -9,7 +9,11 @@ const {
     getAllPosts, 
     updatePost,
     getPostsByUser,
-    addTagsToPost
+    addTagsToPost,
+    getPostById,
+    createPostTag,
+    createTags,
+    getPostsByTagName
     } = require('./index');
 
 const createInitialUsers = async () => {
@@ -32,29 +36,34 @@ const createInitialUsers = async () => {
 const createInitialPosts = async () => {
 
     try {
-        const [ albert, sandra, glamgal ] = await getAllUsers();
+    const [albert, sandra, glamgal] = await getAllUsers();
 
-        await createPost({
-            authorId: albert.id,
-            title: "First Post",
-            content: "This is my first post. I hope I love writing blogs as much as I love writing them"
-        });
+    console.log("Starting to create posts...");
+    await createPost({
+      authorId: albert.id,
+      title: "First Post",
+      content: "This is my first post. I hope I love writing blogs as much as I love writing them.",
+      tags: ["#happy", "#youcandoanything"]
+    });
 
-        await createPost({
-            authorId: sandra.id,
-            title: "How does this work?",
-            content: "Seriously, does this even do anything?"
-          });
-      
-          await createPost({
-            authorId: glamgal.id,
-            title: "Living the Glam Life",
-            content: "Do you even? I swear that half of you are posing."
-          });
+    await createPost({
+      authorId: sandra.id,
+      title: "How does this work?",
+      content: "Seriously, does this even do anything?",
+      tags: ["#happy", "#worst-day-ever"]
+    });
 
-    } catch (error) {
-        throw error;
-    }
+    await createPost({
+      authorId: glamgal.id,
+      title: "Living the Glam Life",
+      content: "Do you even? I swear that half of you are posing.",
+      tags: ["#happy", "#youcandoanything", "#canmandoeverything"]
+    });
+    console.log("Finished creating posts!");
+  } catch (error) {
+    console.log("Error creating posts!");
+    throw error;
+  }
 }
 
  const createInitialTags = async () => {
@@ -149,45 +158,6 @@ const createTables = async () => {
 
 }
 
-const createTags = async (tagList) => {
-
-    if (tagList.length === 0) {
-        return;
-    }
-
-    const insertValues = tagList.map((_, index)=> `$${index + 1}`).join('), (');
-    
-    const selectValues = tagList.map((_, index)=> `$${index + 1}`).join(', ');
-    // insert the tags, doing nothing on conflict
-    // returning nothing, we'll query after
-
-    // select all tags where the name is in our taglist
-    // return the rows from the query
-
-    try {
-        await client.query(`
-            INSERT INTO tags(name)
-            VALUES (${insertValues})
-            ON CONFLICT (name) DO NOTHING;
-        `, tagList);
-
-        const { rows } = await client.query(`
-            SELECT * FROM tags
-            WHERE name
-            IN (${selectValues});
-        `, tagList);
-        // console.log(rows);
-        return rows
-
-    } catch (error) {
-        throw error;
-    }
-
-}
-
-
-
-
 const rebuildDB = async () => {
 
     try {
@@ -197,7 +167,6 @@ const rebuildDB = async () => {
        await createTables();
        await createInitialUsers();
        await createInitialPosts();
-       await createInitialTags();
        
     } catch (error) {
         console.log("Error during rebuildDB")
@@ -235,6 +204,16 @@ const testDB = async () => {
     console.log("Calling getUserById with 1");
     const albert = await getUserById(1);
     console.log("Result:", albert);
+
+    console.log("Calling updatePost on posts[1], only updating tags");
+    const updatePostTagsResult = await updatePost(posts[0].id, {
+      tags: ["#youcandoanything", "#redfish", "#bluefish"]
+    });
+    console.log("Result:", updatePostTagsResult);
+
+    console.log("Calling getPostsByTagName with #happy");
+    const postsWithHappy = await getPostsByTagName("#happy");
+    console.log("Result:", postsWithHappy);
 
     console.log("Finished database tests!");
     } catch (error) {
