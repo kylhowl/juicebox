@@ -1,7 +1,7 @@
 // api/index.js
 
 const jwt = require('jsonwebtoken');
-const { getUserById } = require('../db');
+const { getUserById, updatePost, getPostById } = require('../db');
 const { JWT_SECRET } = process.env;
 
 const express = require('express');
