@@ -4,7 +4,8 @@ const express = require('express');
 const usersRouter = express.Router();
 const jwt = require('jsonwebtoken');
 
-const { getAllUsers, getUserByUsername, createUser } = require('../db');
+const { getAllUsers, getUserByUsername, createUser, getUserById, updateUser, client } = require('../db');
+const { requireUser } = require('./utils')
 
 usersRouter.use((req, res, next) => {
   console.log("A request is being made to /users");
@@ -88,6 +89,58 @@ usersRouter.post('/register', async (req, res, next) => {
     } catch ({ name, message }) {
       next({ name, message })
     } 
+  });
+
+  usersRouter.delete('/:userId', requireUser, async (req, res, next) => {
+
+    const { userId } = req.params;
+  
+    try {
+      const user = await getUserById(userId)
+       if (!user) {
+         next({
+           name: 'UserDoesNotExist',
+           message: 'No user exists with that ID.'
+         });
+       }
+       if (req.user.id == userId) {
+          const updatedUser = await updateUser( userId, { active : false } );
+          res.send({ user : updatedUser });
+      } else {
+      next({
+        name: 'UnauthorizedUser',
+        message: 'You cannot delete an account that is not your own.'
+      });
+      } 
+    } catch ({name, message}) {
+      next({name, message})
+      }
+  });
+
+  usersRouter.patch('/:userId', requireUser, async (req, res, next) => {
+
+    const { userId } = req.params;
+
+    try {
+      const user = await getUserById(userId)
+       if (!user) {
+         next({
+           name: 'UserDoesNotExist',
+           message: 'No user exists with that ID.'
+         });
+       }
+       if (req.user.id == userId) {
+          const updatedUser = await updateUser( userId, { active : true } );
+          res.send({ user : updatedUser });
+      } else {
+      next({
+        name: 'UnauthorizedUser',
+        message: 'You cannot activate an account that is not your own.'
+      });
+      } 
+    } catch ({name, message}) {
+      next({name, message})
+      }
   });
 
 module.exports = usersRouter;
